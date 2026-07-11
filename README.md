@@ -14,7 +14,7 @@ O presente repositório implementa um sistema de monitoramento IoT para câmaras
 - Detecção de anomalias com Isolation Forest treinado para a faixa operacional real da câmara (-4°C a 1°C)
 - 5 features contextuais calculadas em tempo real a partir da série temporal de temperatura: `temp_interna`, `media_movel_2min`, `desvio_padrao_5min`, `taxa_variacao_min`, `porta_aberta`
 - Filtro de persistência: alerta só é disparado após N leituras consecutivas classificadas como anômalas/suspeitas
-- Dashboard single-page somente leitura (sem controles manuais)
+- Dashboard single-page somente leitura
 - Simulador Python para testes sem o hardware físico
 
 ---
