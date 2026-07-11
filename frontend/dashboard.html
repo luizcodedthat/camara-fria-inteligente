@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Câmara Fria</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --text: #203040;
+      --muted: #607085;
+      --border: #dbe5ef;
+      --shadow: 0 10px 30px rgba(32, 48, 64, 0.08);
+      --primary: #6b8afd;
+      --success: #79b8a9;
+      --success-soft: #e6f4ef;
+      --warning: #e3b66a;
+      --warning-soft: #fff3df;
+      --danger: #e38a8a;
+      --danger-soft: #ffe5e5;
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 16px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    .title-block h1 {
+      margin: 0 0 8px;
+      font-size: clamp(24px, 3vw, 34px);
+      letter-spacing: -0.03em;
+    }
+
+    .title-block p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 720px;
+    }
+
+    .status-bar {
+      min-width: 280px;
+      background: rgba(255,255,255,0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .badge.normal { color: #2f6d58; background: var(--success-soft); border-color: rgba(121,184,169,0.35); }
+    .badge.suspeita { color: #9a6a13; background: var(--warning-soft); border-color: rgba(227,182,106,0.35); }
+    .badge.anomala { color: #a34242; background: var(--danger-soft); border-color: rgba(227,138,138,0.38); }
+    .badge.neutral { color: #415166; background: #edf3f9; border-color: var(--border); }
+
+    .grid-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      min-height: 130px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .metric-value {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .metric-help { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .metric-card.normal { border-color: rgba(121,184,169,0.25); }
+    .metric-card.suspeita { border-color: rgba(227,182,106,0.32); }
+    .metric-card.anomala { border-color: rgba(227,138,138,0.38); }
+    .metric-card.threshold-danger { border-color: rgba(227,138,138,0.85); box-shadow: 0 0 0 1px rgba(227,138,138,0.18), var(--shadow); }
+
+    .threshold-alert {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: var(--danger-soft);
+      color: #a34242;
+      border: 1px solid rgba(227,138,138,0.45);
+      font-weight: 700;
+      box-shadow: var(--shadow);
+    }
+
+    .threshold-alert.hidden { display: none; }
+
+    .threshold-alert .icon {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: rgba(163,66,66,0.12); color: #a34242; font-size: 13px; flex: 0 0 auto;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .panel-header h2 { margin: 0; font-size: 18px; letter-spacing: -0.03em; }
+    .panel-header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+
+    .chart-wrap { position: relative; height: 320px; }
+    .chart-wrap.small { height: 260px; }
+
+    .stack { display: grid; gap: 16px; }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      max-height: 392px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr 0.8fr 1fr;
+      gap: 10px;
+      align-items: center;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .history-head {
+      background: #f0f5fb;
+      font-weight: 700;
+      color: #516176;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    .history-item .mono { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      width: fit-content;
+    }
+
+    .pill.normal { background: var(--success-soft); color: #2f6d58; }
+    .pill.suspeita { background: var(--warning-soft); color: #9a6a13; }
+    .pill.anomala { background: var(--danger-soft); color: #a34242; }
+    .pill.neutral { background: #edf3f9; color: #516176; }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 11px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.secondary { background: #edf3f9; color: #3d5065; border: 1px solid var(--border); }
+
+    .footer-note { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    @media (max-width: 720px) {
+      .app { padding: 16px; }
+      .grid-cards { grid-template-columns: 1fr; }
+      .history-item { grid-template-columns: 1fr; }
+      .history-head { display: none; }
+      .chart-wrap, .chart-wrap.small { height: 240px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="title-block">
+        <h1>Dashboard Operacional — Câmara Fria</h1>
+        <p>
+          Leitura em tempo real do ESP32: temperatura interna e estado da porta (sensor HC-SR04), com o
+          resultado de anomalia calculado pelo serviço de ML.
+        </p>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-row">
+          <span>Conexão</span>
+          <span id="connectionBadge" class="badge neutral"><span class="badge-dot"></span><span>Conectando...</span></span>
+        </div>
+        <div class="status-row">
+          <span>Anomalia</span>
+          <span id="anomalyBadge" class="badge neutral"><span class="badge-dot"></span><span>—</span></span>
+        </div>
+        <div class="status-row">
+          <span>Última atualização</span>
+          <strong id="lastUpdated">—</strong>
+        </div>
+        <div class="status-row">
+          <span>Faixa operacional</span>
+          <strong id="thresholdSummary">—</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid-cards" id="cards">
+      <article class="card metric-card" id="cardInternalTemp">
+        <div class="metric-label"><span>Temperatura interna atual</span><span id="tempStatusBadge" class="pill normal">Dentro do padrão</span></div>
+        <div class="metric-value" id="temperatureInternal">--</div>
+        <div class="metric-help">Leitura do sensor interno (ESP32).</div>
+      </article>
+      <article class="card metric-card" id="cardDoorState">
+        <div class="metric-label"><span>Estado da porta</span><span>HC-SR04</span></div>
+        <div class="metric-value" id="doorState">--</div>
+        <div class="metric-help" id="doorMeta">Detectado pelo sensor do ESP32.</div>
+      </article>
+    </section>
+
+    <section class="threshold-alert hidden" id="tempThresholdAlert">
+      <span class="icon">!</span>
+      <span id="tempThresholdText">Temperatura interna fora do padrão operacional.</span>
+    </section>
+
+    <section class="layout">
+      <div class="stack">
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Gráfico de temperatura interna</h2>
+              <p>Evolução da temperatura interna ao longo das últimas amostras.</p>
+            </div>
+            <span class="badge neutral"><span class="badge-dot"></span><span>Atualização em polling</span></span>
+          </div>
+          <div class="chart-wrap"><canvas id="performanceChart"></canvas></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Gráfico de recuperação térmica</h2>
+              <p>Comportamento da temperatura interna em relação ao estado da porta.</p>
+            </div>
+            <span class="badge neutral"><span class="badge-dot"></span><span>Foco no retorno ao patamar</span></span>
+          </div>
+          <div class="chart-wrap small"><canvas id="recoveryChart"></canvas></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Histórico simplificado</h2>
+              <p>Últimas leituras processadas pela aplicação, com indicação compacta de anomalia quando disponível.</p>
+            </div>
+            <span class="badge neutral"><span class="badge-dot"></span><span id="historyCount">0 registros</span></span>
+          </div>
+
+          <div class="history-list" id="historyList">
+            <div class="history-item history-head">
+              <div>Data / hora</div>
+              <div>Temp. interna</div>
+              <div>Porta</div>
+              <div>Anomalia</div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="btn-row" style="margin-bottom: 16px;">
+      <button id="refreshBtn" class="secondary">Atualizar agora</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = "http://localhost:8000/api/v1";
+    const POLL_INTERVAL_MS = 5000;
+    const MAX_HISTORY = 12;
+
+    const state = {
+      thresholds: null,
+      current: null,
+      history: [],
+      performanceChart: null,
+      recoveryChart: null,
+      pollTimer: null,
+      requestInFlight: false,
+      timeSeries: [],
+    };
+
+    const el = {
+      connectionBadge: document.getElementById('connectionBadge'),
+      thresholdSummary: document.getElementById('thresholdSummary'),
+      tempThresholdAlert: document.getElementById('tempThresholdAlert'),
+      tempThresholdText: document.getElementById('tempThresholdText'),
+      tempStatusBadge: document.getElementById('tempStatusBadge'),
+      anomalyBadge: document.getElementById('anomalyBadge'),
+      lastUpdated: document.getElementById('lastUpdated'),
+      temperatureInternal: document.getElementById('temperatureInternal'),
+      doorState: document.getElementById('doorState'),
+      doorMeta: document.getElementById('doorMeta'),
+      cardInternalTemp: document.getElementById('cardInternalTemp'),
+      cardDoorState: document.getElementById('cardDoorState'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      historyList: document.getElementById('historyList'),
+      historyCount: document.getElementById('historyCount'),
+    };
+
+    function formatDateTime(value) {
+      const date = value ? new Date(value) : new Date();
+      return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }).format(date);
+    }
+
+    function formatNumber(value, digits = 1) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
+      return Number(value).toFixed(digits).replace('.', ',');
+    }
+
+    function normalizeDoorState(value) {
+      return value === 'open' ? 'open' : 'closed';
+    }
+
+    function getAnomalyClass(label) {
+      if (label === 'anômala') return 'anomala';
+      if (label === 'suspeita') return 'suspeita';
+      if (label === 'normal') return 'normal';
+      return 'neutral';
+    }
+
+    function updateBadge(badgeEl, label, text) {
+      const cls = getAnomalyClass(label);
+      badgeEl.className = `badge ${cls}`;
+      badgeEl.innerHTML = `<span class="badge-dot"></span><span>${text}</span>`;
+    }
+
+    function applyCardAccent(card, label) {
+      card.classList.remove('normal', 'suspeita', 'anomala');
+      card.classList.add(getAnomalyClass(label));
+    }
+
+    function validateThresholds(current, thresholds) {
+      const hasThresholds = thresholds && typeof thresholds === 'object';
+      if (!hasThresholds || !current) {
+        el.tempThresholdAlert.classList.add('hidden');
+        el.cardInternalTemp.classList.remove('threshold-danger');
+        el.tempStatusBadge.className = 'pill neutral';
+        el.tempStatusBadge.textContent = 'Sem faixa';
+        el.thresholdSummary.textContent = '—';
+        return;
+      }
+
+      const tempValue = Number(current.temperature_internal);
+      const tempMin = Number(thresholds.temp_min);
+      const tempMax = Number(thresholds.temp_max);
+
+      const tempOut = Number.isFinite(tempValue) && Number.isFinite(tempMin) && Number.isFinite(tempMax)
+        ? tempValue < tempMin || tempValue > tempMax
+        : false;
+
+      el.thresholdSummary.textContent = `Temp ${formatNumber(tempMin, 1)}–${formatNumber(tempMax, 1)} °C`;
+      el.tempStatusBadge.className = tempOut ? 'pill anomala' : 'pill normal';
+      el.tempStatusBadge.textContent = tempOut ? 'Fora do padrão' : 'Dentro do padrão';
+
+      el.tempThresholdAlert.classList.toggle('hidden', !tempOut);
+      el.cardInternalTemp.classList.toggle('threshold-danger', tempOut);
+
+      if (tempOut) {
+        el.tempThresholdText.textContent = `Temperatura interna fora do padrão: ${formatNumber(tempValue, 1)} °C. Faixa permitida: ${formatNumber(tempMin, 1)} °C a ${formatNumber(tempMax, 1)} °C.`;
+      }
+    }
+
+    function upsertHistory(entry) {
+      state.history.unshift(entry);
+      state.history = state.history.slice(0, MAX_HISTORY);
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const rows = [
+        '<div class="history-item history-head"><div>Data / hora</div><div>Temp. interna</div><div>Porta</div><div>Anomalia</div></div>',
+        ...state.history.map((item) => {
+          const anomalyClass = getAnomalyClass(item.anomaly?.label || 'normal');
+          const anomalyText = item.anomaly?.label
+            ? `${item.anomaly.label} · ${formatNumber(item.anomaly.score, 2)}`
+            : '—';
+          return `
+            <div class="history-item">
+              <div class="mono">${formatDateTime(item.timestamp)}</div>
+              <div class="mono">${formatNumber(item.temperature_internal, 1)} °C</div>
+              <div><span class="pill ${normalizeDoorState(item.door_state)}">${normalizeDoorState(item.door_state)}</span></div>
+              <div><span class="pill ${anomalyClass}">${anomalyText}</span></div>
+            </div>
+          `;
+        })
+      ];
+
+      el.historyList.innerHTML = rows.join('');
+      el.historyCount.textContent = `${state.history.length} registro${state.history.length === 1 ? '' : 's'}`;
+    }
+
+    function updateCurrentState(payload) {
+      if (!payload || !payload.current) return;
+
+      state.current = payload.current;
+      state.thresholds = payload.thresholds || state.thresholds;
+      const anomaly = payload.anomaly || { label: 'normal', score: 0 };
+      const current = payload.current;
+      const doorState = normalizeDoorState(current.door_state);
+
+      el.temperatureInternal.textContent = `${formatNumber(current.temperature_internal, 1)}°`;
+      el.doorState.textContent = doorState;
+      el.doorMeta.textContent = `Aberta por ${formatNumber(current.door_open_duration_minutes, 1)} min · Total de aberturas ${current.door_open_count_total ?? 0}`;
+      el.lastUpdated.textContent = formatDateTime(current.timestamp || new Date());
+
+      updateBadge(el.anomalyBadge, anomaly.label, `${anomaly.label} · score ${formatNumber(anomaly.score, 2)}`);
+      updateBadge(el.connectionBadge, 'normal', 'Online');
+
+      applyCardAccent(el.cardInternalTemp, anomaly.label);
+      applyCardAccent(el.cardDoorState, anomaly.label === 'anômala' ? 'anomala' : doorState === 'open' ? 'suspeita' : 'normal');
+
+      validateThresholds(current, payload.thresholds || state.thresholds);
+      pushChartPoint(current, anomaly);
+      upsertHistory({
+        timestamp: current.timestamp || new Date().toISOString(),
+        temperature_internal: current.temperature_internal,
+        door_state: doorState,
+        anomaly,
+      });
+    }
+
+    function pushChartPoint(current, anomaly) {
+      const label = new Date(current.timestamp || Date.now()).toLocaleTimeString('pt-BR', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+
+      state.timeSeries.push({
+        label,
+        ti: Number(current.temperature_internal),
+        door: current.door_state === 'open' ? 1 : 0,
+        anomaly: anomaly?.label || 'normal',
+      });
+
+      state.timeSeries = state.timeSeries.slice(-20);
+      refreshCharts();
+    }
+
+    function initCharts() {
+      const perfCtx = document.getElementById('performanceChart');
+      const recCtx = document.getElementById('recoveryChart');
+
+      state.performanceChart = new Chart(perfCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Temperatura interna (°C)',
+              data: [],
+              borderColor: '#6b8afd',
+              backgroundColor: 'rgba(107,138,253,0.12)',
+              tension: 0.35,
+              borderWidth: 2.5,
+              pointRadius: 2,
+            },
+          ]
+        },
+        options: chartOptions(false)
+      });
+
+      state.recoveryChart = new Chart(recCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Temperatura interna',
+              data: [],
+              borderColor: '#6b8afd',
+              backgroundColor: 'rgba(107,138,253,0.12)',
+              tension: 0.32,
+              borderWidth: 3,
+              pointRadius: 2,
+              fill: false,
+            },
+            {
+              label: 'Porta aberta (1 = sim)',
+              data: [],
+              borderColor: '#e3b66a',
+              backgroundColor: 'rgba(227,182,106,0.10)',
+              tension: 0,
+              borderWidth: 2,
+              pointRadius: 2,
+              yAxisID: 'y1',
+            },
+          ]
+        },
+        options: chartOptions(true)
+      });
+    }
+
+    function chartOptions(twoAxes) {
+      const common = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12, boxHeight: 12, usePointStyle: true, pointStyle: 'circle', color: '#516176', padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(32,48,64,0.95)',
+            padding: 12,
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            borderColor: 'rgba(255,255,255,0.15)',
+            borderWidth: 1,
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(219,229,239,0.7)' }, ticks: { color: '#607085' } },
+          y: { grid: { color: 'rgba(219,229,239,0.7)' }, ticks: { color: '#607085' } }
+        }
+      };
+
+      if (twoAxes) {
+        common.scales.y1 = {
+          position: 'right',
+          min: 0,
+          max: 1,
+          ticks: { color: '#607085', callback: (val) => val === 1 ? 'Aberta' : 'Fechada' },
+          grid: { drawOnChartArea: false }
+        };
+      }
+
+      return common;
+    }
+
+    function refreshCharts() {
+      const labels = state.timeSeries.map(item => item.label);
+      state.performanceChart.data.labels = labels;
+      state.performanceChart.data.datasets[0].data = state.timeSeries.map(item => item.ti);
+      state.performanceChart.update('none');
+
+      state.recoveryChart.data.labels = labels;
+      state.recoveryChart.data.datasets[0].data = state.timeSeries.map(item => item.ti);
+      state.recoveryChart.data.datasets[1].data = state.timeSeries.map(item => item.door);
+      state.recoveryChart.update('none');
+    }
+
+    async function fetchCurrent() {
+      if (state.requestInFlight) return;
+      state.requestInFlight = true;
+      updateBadge(el.connectionBadge, 'normal', 'Sincronizando...');
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/dashboard/current`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (response.status === 404) {
+          updateBadge(el.connectionBadge, 'suspeita', 'Sem dados ainda');
+          el.thresholdSummary.textContent = '—';
+          return;
+        }
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        updateCurrentState(data);
+      } catch (error) {
+        updateBadge(el.connectionBadge, 'suspeita', 'Offline');
+        console.warn('Falha ao buscar /dashboard/current.', error);
+      } finally {
+        state.requestInFlight = false;
+      }
+    }
+
+    function bindEvents() {
+      el.refreshBtn.addEventListener('click', fetchCurrent);
+    }
+
+    function bootstrapDefaults() {
+      updateBadge(el.connectionBadge, 'neutral', 'Aguardando dados');
+      updateBadge(el.anomalyBadge, 'neutral', 'Sem análise');
+    }
+
+    function startPolling() {
+      clearInterval(state.pollTimer);
+      state.pollTimer = setInterval(fetchCurrent, POLL_INTERVAL_MS);
+    }
+
+    async function init() {
+      bootstrapDefaults();
+      initCharts();
+      bindEvents();
+      await fetchCurrent();
+      startPolling();
+    }
+
+    init();
+  </script>
+</body>
+</html>
